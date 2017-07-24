@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Implements SRGAN models: https://arxiv.org/abs/1609.04802
 
-Todo:
+TODO:
 """
 
 import torch.nn as nn

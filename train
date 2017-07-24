@@ -13,6 +13,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
 from models import Generator, Discriminator, FeatureExtractor, weights_init
+from utils import Visualizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='cifar100', help='cifar10 | cifar100 | folder')
@@ -93,7 +94,9 @@ if opt.cuda:
     target_fake = target_fake.cuda()
 
 optimG = optim.Adam(netG.parameters(), lr=opt.lrG)
-optimD = optim.SGD(netD.parameters(), lr=opt.lrD, momentum=0.9)
+optimD = optim.Adam(netD.parameters(), lr=opt.lrD)
+
+visualizer = Visualizer()
 
 inputsG = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 for epoch in range(opt.nEpochs):
@@ -142,7 +145,7 @@ for epoch in range(opt.nEpochs):
         lossG_content = content_criterion(fake_features, real_features.detach())
         lossG_adversarial = adversarial_criterion(netD(inputsD_fake), target_real)
 
-        lossG_total = 2e-6*lossG_content + lossG_adversarial
+        lossG_total = lossG_content + 1e-3*lossG_adversarial
         lossG_total.backward()
 
         # Update generator weights
@@ -152,7 +155,8 @@ for epoch in range(opt.nEpochs):
         print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G (Content/Advers): %.4f/%.4f D(x): %.4f D(G(z)): %.4f'
               % (epoch, opt.nEpochs, i, len(dataloader),
                  (lossD_real + lossD_fake).data[0], lossG_content.data[0], lossG_adversarial.data[0], D_real, D_fake,))
+        visualizer.show(inputsG, inputsD_real.cpu().data, inputsD_fake.cpu().data)
 
     # Do checkpointing
-    torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
-    torch.save(netD.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
+    torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.out, epoch))
+    torch.save(netD.state_dict(), '%s/netG_epoch_%d.pth' % (opt.out, epoch))

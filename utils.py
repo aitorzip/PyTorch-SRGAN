@@ -20,6 +20,10 @@ class Visualizer:
         self.figure, (self.lr_plot, self.hr_plot, self.fake_plot) = plt.subplots(1,3)
         self.figure.show()
 
+        self.lr_image_ph = None
+        self.hr_image_ph = None
+        self.fake_hr_image_ph = None
+
     def show(self, inputsG, inputsD_real, inputsD_fake):
 
         self.step += 1
@@ -32,7 +36,13 @@ class Visualizer:
             hr_image = self.transform(inputsD_real[i])
             fake_hr_image = self.transform(inputsD_fake[i])
 
-            self.lr_plot.imshow(lr_image)
-            self.hr_plot.imshow(hr_image)
-            self.fake_plot.imshow(fake_hr_image)
+            if self.lr_image_ph is None:
+                self.lr_image_ph = self.lr_plot.imshow(lr_image)
+                self.hr_image_ph = self.hr_plot.imshow(hr_image)
+                self.fake_hr_image_ph = self.fake_plot.imshow(fake_hr_image)
+            else:
+                self.lr_image_ph.set_data(lr_image)
+                self.hr_image_ph.set_data(hr_image)
+                self.fake_hr_image_ph.set_data(fake_hr_image)
+                
             self.figure.canvas.draw()

@@ -2,6 +2,8 @@
 """Implements SRGAN models: https://arxiv.org/abs/1609.04802
 
 TODO:
+    * Add Dropout to Generator
+    * Try to make this work with SELU
 """
 
 import torch.nn as nn

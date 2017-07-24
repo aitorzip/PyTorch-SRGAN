@@ -23,8 +23,8 @@ parser.add_argument('--batchSize', type=int, default=16, help='input batch size'
 parser.add_argument('--imageSize', type=int, default=15, help='the low resolution image size')
 parser.add_argument('--upSampling', type=int, default=2, help='low to high resolution scaling factor')
 parser.add_argument('--nEpochs', type=int, default=100, help='number of epochs to train for')
-parser.add_argument('--lrG', type=float, default=0.00001, help='learning rate for generator')
-parser.add_argument('--lrD', type=float, default=0.000001, help='learning rate for discriminator')
+parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate for generator')
+parser.add_argument('--lrD', type=float, default=0.001, help='learning rate for discriminator')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--nGPU', type=int, default=1, help='number of GPUs to use')
 parser.add_argument('--netG', type=str, default='', help="path to netG (to continue training)")
@@ -47,7 +47,6 @@ transform = transforms.Compose([transforms.RandomCrop(opt.imageSize*opt.upSampli
 scale = transforms.Compose([transforms.ToPILImage(),
                             transforms.Scale(opt.imageSize),
                             transforms.ToTensor()])
-preprocess = transforms.Normalize((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))
 
 if opt.dataset == 'folder':
     # folder dataset

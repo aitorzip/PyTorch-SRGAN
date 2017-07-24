@@ -17,9 +17,9 @@ def weights_init(m):
         nn.init.constant(m.bias.data, 0.0)
 
 class FeatureExtractor(nn.Module):
-    def __init__(self, cnn, feature_layer=11):
+    def __init__(self, cnn, feature_layer=8):
         super(FeatureExtractor, self).__init__()
-        self.features = nn.Sequential(*list(cnn.features.children())[:feature_layer])
+        self.features = nn.Sequential(*list(cnn.features.children())[:(feature_layer+1)])
 
     def forward(self, x):
         return self.features(x)
@@ -31,7 +31,7 @@ class residualBlock(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
 
     def forward(self, x):
-        return self.conv2(F.selu(self.conv1(x))) + x
+        return self.conv2(F.elu(self.conv1(x))) + x
 
 class upsampleBlock(nn.Module):
     # Implements resize-convolution
@@ -41,7 +41,7 @@ class upsampleBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, stride=1, padding=1)
 
     def forward(self, x):
-        return F.selu(self.conv1(self.upsample1(x)))
+        return F.elu(self.conv1(self.upsample1(x)))
 
 class Generator(nn.Module):
     def __init__(self, n_residual_blocks, upsample):
@@ -66,7 +66,7 @@ class Generator(nn.Module):
         self.conv3 = nn.Conv2d(in_channels, 3, 9, stride=1, padding=1)
 
     def forward(self, x):
-        x = F.selu(self.conv1(x))
+        x = F.elu(self.conv1(x))
 
         y = self.__getattr__('res1')(x)
         for i in range(1, self.n_residual_blocks):
@@ -96,18 +96,18 @@ class Discriminator(nn.Module):
         self.fc2 = nn.Linear(1024, 1)
 
     def forward(self, x):
-        x = F.selu(self.conv1(x))
+        x = F.elu(self.conv1(x))
 
-        x = F.selu(self.conv2(x))
-        x = F.selu(self.conv3(x))
-        x = F.selu(self.conv4(x))
-        x = F.selu(self.conv5(x))
-        x = F.selu(self.conv6(x))
-        x = F.selu(self.conv7(x))
-        x = F.selu(self.conv8(x))
+        x = F.elu(self.conv2(x))
+        x = F.elu(self.conv3(x))
+        x = F.elu(self.conv4(x))
+        x = F.elu(self.conv5(x))
+        x = F.elu(self.conv6(x))
+        x = F.elu(self.conv7(x))
+        x = F.elu(self.conv8(x))
 
         # Flatten
         x = x.view(x.size(0), -1)
 
-        x = F.selu(self.fc1(x))
+        x = F.elu(self.fc1(x))
         return F.sigmoid(self.fc2(x))

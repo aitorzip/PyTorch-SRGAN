@@ -23,8 +23,8 @@ parser.add_argument('--batchSize', type=int, default=16, help='input batch size'
 parser.add_argument('--imageSize', type=int, default=15, help='the low resolution image size')
 parser.add_argument('--upSampling', type=int, default=2, help='low to high resolution scaling factor')
 parser.add_argument('--nEpochs', type=int, default=100, help='number of epochs to train for')
-parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate for generator')
-parser.add_argument('--lrD', type=float, default=0.0001, help='learning rate for discriminator')
+parser.add_argument('--lrG', type=float, default=0.00001, help='learning rate for generator')
+parser.add_argument('--lrD', type=float, default=0.000001, help='learning rate for discriminator')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--nGPU', type=int, default=1, help='number of GPUs to use')
 parser.add_argument('--netG', type=str, default='', help="path to netG (to continue training)")
@@ -47,6 +47,7 @@ transform = transforms.Compose([transforms.RandomCrop(opt.imageSize*opt.upSampli
 scale = transforms.Compose([transforms.ToPILImage(),
                             transforms.Scale(opt.imageSize),
                             transforms.ToTensor()])
+preprocess = transforms.Normalize((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))
 
 if opt.dataset == 'folder':
     # folder dataset
@@ -64,19 +65,20 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                          shuffle=True, num_workers=int(opt.workers))
 
 netG = Generator(6, opt.upSampling)
-netG.apply(weights_init)
+#netG.apply(weights_init)
 if opt.netG != '':
     netG.load_state_dict(torch.load(opt.netG))
 print netG
 
 netD = Discriminator()
-netD.apply(weights_init)
+#netD.apply(weights_init)
 if opt.netD != '':
     netD.load_state_dict(torch.load(opt.netD))
 print netD
 
 # For the content loss
-feature_extractor = FeatureExtractor(torchvision.models.vgg19_bn(pretrained=True))
+feature_extractor = FeatureExtractor(torchvision.models.vgg19(pretrained=True))
+print feature_extractor
 content_criterion = nn.MSELoss()
 adversarial_criterion = nn.BCELoss()
 
@@ -94,7 +96,7 @@ if opt.cuda:
     target_fake = target_fake.cuda()
 
 optimG = optim.Adam(netG.parameters(), lr=opt.lrG)
-optimD = optim.Adam(netD.parameters(), lr=opt.lrD)
+optimD = optim.SGD(netD.parameters(), lr=opt.lrD, momentum=0.9, nesterov=True)
 
 visualizer = Visualizer()
 
@@ -115,6 +117,7 @@ for epoch in range(opt.nEpochs):
         else:
             inputsD_real = Variable(inputs)
             inputsD_fake = netG(Variable(inputsG))
+
 
         ######### Train discriminator #########
         netD.zero_grad()
@@ -139,13 +142,13 @@ for epoch in range(opt.nEpochs):
         ######### Train generator #########
         netG.zero_grad()
 
+        real_features = feature_extractor(inputsD_real).detach()
         fake_features = feature_extractor(inputsD_fake)
-        real_features = feature_extractor(inputsD_real)
 
-        lossG_content = content_criterion(fake_features, real_features.detach())
+        lossG_content = content_criterion(fake_features, real_features)
         lossG_adversarial = adversarial_criterion(netD(inputsD_fake), target_real)
 
-        lossG_total = lossG_content + 1e-3*lossG_adversarial
+        lossG_total = lossG_content + lossG_adversarial
         lossG_total.backward()
 
         # Update generator weights

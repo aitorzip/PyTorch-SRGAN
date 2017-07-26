@@ -30,10 +30,13 @@ class residualBlock(nn.Module):
     def __init__(self, in_channels):
         super(residualBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, 64, 3, stride=1, padding=1)
+        self.conv1_bn = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
+        self.conv2_bn = nn.BatchNorm2d(64)
+
 
     def forward(self, x):
-        return self.conv2(F.elu(self.conv1(x))) + x
+        return self.conv2_bn(self.conv2(F.elu(self.conv1_bn(self.conv1(x))))) + x
 
 class upsampleBlock(nn.Module):
     # Implements resize-convolution
@@ -57,6 +60,7 @@ class Generator(nn.Module):
             self.add_module('res' + str(i+1), residualBlock(64))
 
         self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
+        self.conv2_bn = nn.BatchNorm2d(64)
 
         in_channels = 64
         out_channels = 256
@@ -74,7 +78,7 @@ class Generator(nn.Module):
         for i in range(1, self.n_residual_blocks):
             y = self.__getattr__('res' + str(i+1))(y)
 
-        x = self.conv2(y) + x
+        x = self.conv2_bn(self.conv2(y)) + x
 
         for i in range(self.upsample):
             x = self.__getattr__('upscale' + str(i+1))(x)
@@ -87,12 +91,19 @@ class Discriminator(nn.Module):
         self.conv1 = nn.Conv2d(3, 64, 3, stride=1, padding=1)
 
         self.conv2 = nn.Conv2d(64, 64, 3, stride=2, padding=1)
+        self.conv2_bn = nn.BatchNorm2d(64)
         self.conv3 = nn.Conv2d(64, 128, 3, stride=1, padding=1)
+        self.conv3_bn = nn.BatchNorm2d(128)
         self.conv4 = nn.Conv2d(128, 128, 3, stride=2, padding=1)
+        self.conv4_bn = nn.BatchNorm2d(128)
         self.conv5 = nn.Conv2d(128, 256, 3, stride=1, padding=1)
+        self.conv5_bn = nn.BatchNorm2d(256)
         self.conv6 = nn.Conv2d(256, 256, 3, stride=2, padding=1)
+        self.conv6_bn = nn.BatchNorm2d(256)
         self.conv7 = nn.Conv2d(256, 512, 3, stride=1, padding=1)
+        self.conv7_bn = nn.BatchNorm2d(512)
         self.conv8 = nn.Conv2d(512, 512, 3, stride=2, padding=1)
+        self.conv8_bn = nn.BatchNorm2d(512)
 
         self.fc1 = nn.Linear(2048, 1024)
         self.fc2 = nn.Linear(1024, 1)
@@ -100,13 +111,13 @@ class Discriminator(nn.Module):
     def forward(self, x):
         x = F.elu(self.conv1(x))
 
-        x = F.elu(self.conv2(x))
-        x = F.elu(self.conv3(x))
-        x = F.elu(self.conv4(x))
-        x = F.elu(self.conv5(x))
-        x = F.elu(self.conv6(x))
-        x = F.elu(self.conv7(x))
-        x = F.elu(self.conv8(x))
+        x = F.elu(self.conv2_bn(self.conv2(x)))
+        x = F.elu(self.conv3_bn(self.conv3(x)))
+        x = F.elu(self.conv4_bn(self.conv4(x)))
+        x = F.elu(self.conv5_bn(self.conv5(x)))
+        x = F.elu(self.conv6_bn(self.conv6(x)))
+        x = F.elu(self.conv7_bn(self.conv7(x)))
+        x = F.elu(self.conv8_bn(self.conv8(x)))
 
         # Flatten
         x = x.view(x.size(0), -1)

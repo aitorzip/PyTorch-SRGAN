@@ -12,7 +12,9 @@ import torchvision
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
-from models import Generator, Discriminator, FeatureExtractor, weights_init
+from tensorboard_logger import configure, log_value
+
+from models import Generator, Discriminator, FeatureExtractor
 from utils import Visualizer
 
 parser = argparse.ArgumentParser()
@@ -23,7 +25,7 @@ parser.add_argument('--batchSize', type=int, default=16, help='input batch size'
 parser.add_argument('--imageSize', type=int, default=15, help='the low resolution image size')
 parser.add_argument('--upSampling', type=int, default=2, help='low to high resolution scaling factor')
 parser.add_argument('--nEpochs', type=int, default=100, help='number of epochs to train for')
-parser.add_argument('--lrG', type=float, default=0.000001, help='learning rate for generator')
+parser.add_argument('--lrG', type=float, default=0.00001, help='learning rate for generator')
 parser.add_argument('--lrD', type=float, default=0.0000001, help='learning rate for discriminator')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--nGPU', type=int, default=1, help='number of GPUs to use')
@@ -44,9 +46,16 @@ if torch.cuda.is_available() and not opt.cuda:
 
 transform = transforms.Compose([transforms.RandomCrop(opt.imageSize*opt.upSampling),
                                 transforms.ToTensor()])
+
+normalize = transforms.Normalize(mean = [0.485, 0.456, 0.406],
+                                std = [0.229, 0.224, 0.225])
+
 scale = transforms.Compose([transforms.ToPILImage(),
                             transforms.Scale(opt.imageSize),
-                            transforms.ToTensor()])
+                            transforms.ToTensor(),
+                            transforms.Normalize(mean = [0.485, 0.456, 0.406],
+                                                std = [0.229, 0.224, 0.225])
+                            ])
 
 if opt.dataset == 'folder':
     # folder dataset
@@ -95,11 +104,52 @@ if opt.cuda:
     target_fake = target_fake.cuda()
 
 optimG = optim.Adam(netG.parameters(), lr=opt.lrG)
-optimD = optim.Adam(netD.parameters(), lr=opt.lrD)
+optimD = optim.SGD(netD.parameters(), lr=opt.lrD, momentum=0.9, nesterov=True)
 
+configure('logs/' + opt.dataset + '-' + str(opt.batchSize) + '-' + str(opt.lrG) + '-' + str(opt.lrD), flush_secs=5)
 visualizer = Visualizer()
 
 inputsG = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
+
+# Pre-train generator
+print 'Generator pre-training'
+for epoch in range(50):
+    for i, data in enumerate(dataloader):
+        # Generate data
+        inputs, _ = data
+
+        # Downsample images to low resolution
+        for j in range(opt.batchSize):
+            inputsG[j] = scale(inputs[j])
+            inputs[j] = normalize(inputs[j])
+
+        # Generate real and fake inputs
+        if opt.cuda:
+            inputsD_real = Variable(inputs.cuda())
+            inputsD_fake = netG(Variable(inputsG).cuda())
+        else:
+            inputsD_real = Variable(inputs)
+            inputsD_fake = netG(Variable(inputsG))
+
+        ######### Train generator #########
+        netG.zero_grad()
+
+        lossG_content = content_criterion(inputsD_fake, inputsD_real)
+        lossG_content.backward()
+
+        # Update generator weights
+        optimG.step()
+
+        # Status and display
+        print('[%d/%d][%d/%d] Loss_G: %.4f'
+              % (epoch, 50, i, len(dataloader), lossG_content.data[0],))
+        visualizer.show(inputsG, inputsD_real.cpu().data, inputsD_fake.cpu().data)
+
+    log_value('G_pixel_loss', lossG_content.data[0], epoch)
+    torch.save(netG.state_dict(), '%s/netG_pretrain_%d.pth' % (opt.out, epoch))
+
+
+print 'Adversarial training'
 for epoch in range(opt.nEpochs):
     for i, data in enumerate(dataloader):
         # Generate data
@@ -108,10 +158,11 @@ for epoch in range(opt.nEpochs):
         # Downsample images to low resolution
         for j in range(opt.batchSize):
             inputsG[j] = scale(inputs[j])
+            inputs[j] = normalize(inputs[j])
 
         # Generate real and fake inputs
         if opt.cuda:
-            inputsD_real = Variable(inputs).cuda()
+            inputsD_real = Variable(inputs.cuda())
             inputsD_fake = netG(Variable(inputsG).cuda())
         else:
             inputsD_real = Variable(inputs)
@@ -141,13 +192,13 @@ for epoch in range(opt.nEpochs):
         ######### Train generator #########
         netG.zero_grad()
 
-        real_features = feature_extractor(inputsD_real).detach()
+        real_features = Variable(feature_extractor(inputsD_real).data)
         fake_features = feature_extractor(inputsD_fake)
 
         lossG_content = content_criterion(fake_features, real_features)
-        lossG_adversarial = adversarial_criterion(netD(inputsD_fake), target_real)
+        lossG_adversarial = adversarial_criterion(netD(inputsD_fake).detach(), target_real)
 
-        lossG_total = lossG_content + 1e-3*lossG_adversarial
+        lossG_total = 0.006*lossG_content + 1e-3*lossG_adversarial
         lossG_total.backward()
 
         # Update generator weights
@@ -158,6 +209,10 @@ for epoch in range(opt.nEpochs):
               % (epoch, opt.nEpochs, i, len(dataloader),
                  (lossD_real + lossD_fake).data[0], lossG_content.data[0], lossG_adversarial.data[0], D_real, D_fake,))
         visualizer.show(inputsG, inputsD_real.cpu().data, inputsD_fake.cpu().data)
+
+    log_value('G_content_loss', lossG_content.data[0], epoch)
+    log_value('G_advers_loss', lossG_adversarial.data[0], epoch)
+    log_value('D_advers_loss', (lossD_real + lossD_fake).data[0], epoch)
 
     # Do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.out, epoch))

@@ -2,21 +2,13 @@
 """Implements SRGAN models: https://arxiv.org/abs/1609.04802
 
 TODO:
-    * Add Dropout to Generator
     * Try to make this work with SELU
 """
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-
-# custom weights initialization for SELU activations
-def weights_init(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        size = m.weight.size()
-        fan_in = size[1]
-        nn.init.normal(m.weight.data, mean=0, std=np.sqrt(1.0/fan_in))
-        nn.init.constant(m.bias.data, 0.0)
 
 class FeatureExtractor(nn.Module):
     def __init__(self, cnn, feature_layer=8):
@@ -26,17 +18,25 @@ class FeatureExtractor(nn.Module):
     def forward(self, x):
         return self.features(x)
 
-class residualBlock(nn.Module):
-    def __init__(self, in_channels):
-        super(residualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, 64, 3, stride=1, padding=1)
-        self.conv1_bn = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
-        self.conv2_bn = nn.BatchNorm2d(64)
+class denseNet(nn.Module):
+    def __init__(self, in_channels, k, layers, p=0.2):
+        super(denseNet, self).__init__()
+        self.layers = layers
 
+        for i in range(layers):
+            self.add_module('batchnorm' + str(i+1), nn.BatchNorm2d(in_channels))
+            self.add_module('conv' + str(i+1), nn.Conv2d(in_channels, k, 3, stride=1, padding=1))
+            self.add_module('drop' + str(i+1), nn.Dropout2d(p=p))
+            in_channels += k
 
     def forward(self, x):
-        return self.conv2_bn(self.conv2(F.elu(self.conv1_bn(self.conv1(x))))) + x
+        for i in range(self.layers):
+            y = self.__getattr__('batchnorm' + str(i+1))(x.clone())
+            y = F.elu(y)
+            y = self.__getattr__('conv' + str(i+1))(y)
+            y = self.__getattr__('drop' + str(i+1))(y)
+            x = torch.cat((x,y), dim=1)
+        return x
 
 class upsampleBlock(nn.Module):
     # Implements resize-convolution
@@ -49,41 +49,42 @@ class upsampleBlock(nn.Module):
         return F.elu(self.conv1(self.upsample1(x)))
 
 class Generator(nn.Module):
-    def __init__(self, n_residual_blocks, upsample):
+    def __init__(self, n_dense_blocks, upsample):
         super(Generator, self).__init__()
-        self.n_residual_blocks = n_residual_blocks
+        self.n_dense_blocks = n_dense_blocks
         self.upsample = upsample
 
         self.conv1 = nn.Conv2d(3, 64, 9, stride=1, padding=1)
 
-        for i in range(self.n_residual_blocks):
-            self.add_module('res' + str(i+1), residualBlock(64))
+        inchannels = 64
+        for i in range(self.n_dense_blocks):
+            self.add_module('denseNet' + str(i+1), denseNet(inchannels, 12, 4))
+            inchannels += 12*4
 
-        self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(inchannels, 64, 3, stride=1, padding=1)
         self.conv2_bn = nn.BatchNorm2d(64)
 
         in_channels = 64
         out_channels = 256
         for i in range(self.upsample):
-            self.add_module('upscale' + str(i+1), upsampleBlock(in_channels, out_channels))
+            self.add_module('upsample' + str(i+1), upsampleBlock(in_channels, out_channels))
             in_channels = out_channels
             out_channels = out_channels/2
 
         self.conv3 = nn.Conv2d(in_channels, 3, 9, stride=1, padding=1)
 
     def forward(self, x):
-        x = F.elu(self.conv1(x))
+        x = self.conv1(x)
 
-        y = self.__getattr__('res1')(x)
-        for i in range(1, self.n_residual_blocks):
-            y = self.__getattr__('res' + str(i+1))(y)
+        for i in range(self.n_dense_blocks):
+            x = self.__getattr__('denseNet' + str(i+1))(x)
 
-        x = self.conv2_bn(self.conv2(y)) + x
+        x = F.elu(self.conv2_bn(self.conv2(x)))
 
         for i in range(self.upsample):
-            x = self.__getattr__('upscale' + str(i+1))(x)
+            x = self.__getattr__('upsample' + str(i+1))(x)
 
-        return F.sigmoid(self.conv3(x))
+        return self.conv3(x)
 
 class Discriminator(nn.Module):
     def __init__(self):

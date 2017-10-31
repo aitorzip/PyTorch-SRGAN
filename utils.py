@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 class Visualizer:
     def __init__(self, show_step=10, image_size=30):
         self.transform = transforms.Compose([transforms.Normalize(mean = [-2.118, -2.036, -1.804], # Equivalent to un-normalizing ImageNet (for correct visualization)
-                                            std = [4.367, 4.464, 4.444]),
+                                                                    std = [4.367, 4.464, 4.444]),
                                             transforms.ToPILImage(),
                                             transforms.Scale(image_size)])
+
         self.show_step = show_step
         self.step = 0
 

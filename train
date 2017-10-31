@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Solve normalization stuff
-
 import argparse
 import os
 import sys
@@ -63,14 +61,11 @@ scale = transforms.Compose([transforms.ToPILImage(),
 
 if opt.dataset == 'folder':
     # folder dataset
-    dataset = datasets.ImageFolder(root=opt.dataroot,
-                                    transform=transform)
+    dataset = datasets.ImageFolder(root=opt.dataroot, transform=transform)
 elif opt.dataset == 'cifar10':
-    dataset = datasets.CIFAR10(root=opt.dataroot, download=True,
-                                transform=transform)
+    dataset = datasets.CIFAR10(root=opt.dataroot, train=True, download=True, transform=transform)
 elif opt.dataset == 'cifar100':
-    dataset = datasets.CIFAR100(root=opt.dataroot, download=True,
-                                transform=transform)
+    dataset = datasets.CIFAR100(root=opt.dataroot, train=True, download=True, transform=transform)
 assert dataset
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
@@ -115,7 +110,7 @@ low_res = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 
 # Pre-train generator using raw MSE loss
 print 'Generator pre-training'
-for epoch in range(300):
+for epoch in range(2):
     mean_generator_content_loss = 0.0
 
     for i, data in enumerate(dataloader):
@@ -140,24 +135,23 @@ for epoch in range(300):
 
         generator_content_loss = content_criterion(high_res_fake, high_res_real)
         mean_generator_content_loss += generator_content_loss.data[0]
-        generator_content_loss.backward()
 
-        # Update generator weights
+        generator_content_loss.backward()
         optim_generator.step()
 
         ######### Status and display #########
-        sys.stdout.write('\r[%d/%d][%d/%d] Generator_MSE_Loss: %.4f' % (epoch, 300, i, len(dataloader), generator_content_loss.data[0]))
+        sys.stdout.write('\r[%d/%d][%d/%d] Generator_MSE_Loss: %.4f' % (epoch, 2, i, len(dataloader), generator_content_loss.data[0]))
         visualizer.show(low_res, high_res_real.cpu().data, high_res_fake.cpu().data)
 
-    sys.stdout.write('\r[%d/%d][%d/%d] Generator_MSE_Loss: %.4f\n' % (epoch, 300, i, len(dataloader), mean_generator_content_loss/len(dataloader)))
+    sys.stdout.write('\r[%d/%d][%d/%d] Generator_MSE_Loss: %.4f\n' % (epoch, 2, i, len(dataloader), mean_generator_content_loss/len(dataloader)))
     log_value('generator_mse_loss', mean_generator_content_loss/len(dataloader), epoch)
 
 # Do checkpointing
 torch.save(generator.state_dict(), '%s/generator_pretrain.pth' % opt.out)
 
 # SRGAN training
-scheduler_generator = lr_scheduler.StepLR(optim_generator, step_size=100000, gamma=0.1)
-scheduler_discriminator = lr_scheduler.StepLR(optim_discriminator, step_size=100000, gamma=0.1)
+optim_generator = optim.Adam(generator.parameters(), lr=opt.generatorLR*0.1)
+optim_discriminator = optim.Adam(discriminator.parameters(), lr=opt.discriminatorLR*0.1)
 
 print 'SRGAN training'
 for epoch in range(opt.nEpochs):
@@ -186,15 +180,12 @@ for epoch in range(opt.nEpochs):
         ######### Train discriminator #########
         discriminator.zero_grad()
 
-        discriminated_high_res_fake = discriminator(high_res_fake)
-
         discriminator_loss = adversarial_criterion(discriminator(high_res_real), target_real) + \
-                             adversarial_criterion(discriminated_high_res_fake, target_fake)
+                             adversarial_criterion(discriminator(Variable(high_res_fake.data)), target_fake)
         mean_discriminator_loss += discriminator_loss.data[0]
-        discriminator_loss.backward(retain_graph=True) # To avoid PyTorch from deleting discriminated_high_res_fake automatically
-
-        # Update discriminator weights
-        scheduler_discriminator.step()
+        
+        discriminator_loss.backward()
+        optim_discriminator.step()
 
         ######### Train generator #########
         generator.zero_grad()
@@ -204,16 +195,15 @@ for epoch in range(opt.nEpochs):
 
         generator_content_loss = content_criterion(high_res_fake, high_res_real) + 0.006*content_criterion(fake_features, real_features)
         mean_generator_content_loss += generator_content_loss.data[0]
-        generator_adversarial_loss = adversarial_criterion(discriminated_high_res_fake.detach(), target_real)
+        generator_adversarial_loss = adversarial_criterion(discriminator(high_res_fake), target_real)
         mean_generator_adversarial_loss += generator_adversarial_loss.data[0]
 
         generator_total_loss = generator_content_loss + 1e-3*generator_adversarial_loss
         mean_generator_total_loss += generator_total_loss.data[0]
+        
         generator_total_loss.backward()
-
-        # Update generator weights
-        scheduler_generator.step()
-
+        optim_generator.step()   
+        
         ######### Status and display #########
         sys.stdout.write('\r[%d/%d][%d/%d] Discriminator_Loss: %.4f Generator_Loss (Content/Advers/Total): %.4f/%.4f/%.4f' % (epoch, opt.nEpochs, i, len(dataloader),
         discriminator_loss.data[0], generator_content_loss.data[0], generator_adversarial_loss.data[0], generator_total_loss.data[0]))

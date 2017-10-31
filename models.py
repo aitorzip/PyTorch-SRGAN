@@ -8,7 +8,7 @@ TODO:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+from torch.autograd import Variable
 
 def swish(x):
     return x * F.sigmoid(x)
@@ -80,7 +80,7 @@ class Generator(nn.Module):
         for i in range(self.upsample_factor):
             x = self.__getattr__('upsample' + str(i+1))(x)
 
-        return F.tanh(self.conv3(x))
+        return self.conv3(x)
 
 class Discriminator(nn.Module):
     def __init__(self):

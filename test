@@ -125,10 +125,8 @@ for i, data in enumerate(dataloader):
     
     ######### Test discriminator #########
 
-    discriminated_high_res_fake = discriminator(high_res_fake)
-
     discriminator_loss = adversarial_criterion(discriminator(high_res_real), target_real) + \
-                            adversarial_criterion(discriminated_high_res_fake, target_fake)
+                            adversarial_criterion(discriminator(Variable(high_res_fake.data)), target_fake)
     mean_discriminator_loss += discriminator_loss.data[0]
 
     ######### Test generator #########
@@ -138,7 +136,7 @@ for i, data in enumerate(dataloader):
 
     generator_content_loss = content_criterion(high_res_fake, high_res_real) + 0.006*content_criterion(fake_features, real_features)
     mean_generator_content_loss += generator_content_loss.data[0]
-    generator_adversarial_loss = adversarial_criterion(discriminated_high_res_fake.detach(), target_real)
+    generator_adversarial_loss = adversarial_criterion(discriminator(high_res_fake), target_real)
     mean_generator_adversarial_loss += generator_adversarial_loss.data[0]
 
     generator_total_loss = generator_content_loss + 1e-3*generator_adversarial_loss

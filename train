@@ -87,8 +87,7 @@ print feature_extractor
 content_criterion = nn.MSELoss()
 adversarial_criterion = nn.BCELoss()
 
-target_real = Variable(torch.ones(opt.batchSize,1))
-target_fake = Variable(torch.zeros(opt.batchSize,1))
+ones_const = Variable(torch.ones(opt.batchSize, 1))
 
 # if gpu is to be used
 if opt.cuda:
@@ -97,14 +96,13 @@ if opt.cuda:
     feature_extractor.cuda()
     content_criterion.cuda()
     adversarial_criterion.cuda()
-    target_real = target_real.cuda()
-    target_fake = target_fake.cuda()
+    ones_const = ones_const.cuda()
 
 optim_generator = optim.Adam(generator.parameters(), lr=opt.generatorLR)
 optim_discriminator = optim.Adam(discriminator.parameters(), lr=opt.discriminatorLR)
 
 configure('logs/' + opt.dataset + '-' + str(opt.batchSize) + '-' + str(opt.generatorLR) + '-' + str(opt.discriminatorLR), flush_secs=5)
-visualizer = Visualizer()
+visualizer = Visualizer(image_size=opt.imageSize*opt.upSampling)
 
 low_res = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
 
@@ -173,9 +171,13 @@ for epoch in range(opt.nEpochs):
         if opt.cuda:
             high_res_real = Variable(high_res_real.cuda())
             high_res_fake = generator(Variable(low_res).cuda())
+            target_real = Variable(torch.rand(opt.batchSize,1)*0.5 + 0.7).cuda()
+            target_fake = Variable(torch.rand(opt.batchSize,1)*0.3).cuda()
         else:
             high_res_real = Variable(high_res_real)
             high_res_fake = generator(Variable(low_res))
+            target_real = Variable(torch.rand(opt.batchSize,1)*0.5 + 0.7)
+            target_fake = Variable(torch.rand(opt.batchSize,1)*0.3)
         
         ######### Train discriminator #########
         discriminator.zero_grad()
@@ -195,7 +197,7 @@ for epoch in range(opt.nEpochs):
 
         generator_content_loss = content_criterion(high_res_fake, high_res_real) + 0.006*content_criterion(fake_features, real_features)
         mean_generator_content_loss += generator_content_loss.data[0]
-        generator_adversarial_loss = adversarial_criterion(discriminator(high_res_fake), target_real)
+        generator_adversarial_loss = adversarial_criterion(discriminator(high_res_fake), ones_const)
         mean_generator_adversarial_loss += generator_adversarial_loss.data[0]
 
         generator_total_loss = generator_content_loss + 1e-3*generator_adversarial_loss

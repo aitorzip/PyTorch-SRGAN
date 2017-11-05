@@ -39,11 +39,11 @@ class upsampleBlock(nn.Module):
     # Implements resize-convolution
     def __init__(self, in_channels, out_channels):
         super(upsampleBlock, self).__init__()
-        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
         self.conv = nn.Conv2d(in_channels, out_channels, 3, stride=1, padding=1)
+        self.shuffler = nn.PixelShuffle(2)
 
     def forward(self, x):
-        return swish(self.conv(self.upsample(x)))
+        return swish(self.shuffler(self.conv(x)))
 
 class Generator(nn.Module):
     def __init__(self, n_residual_blocks, upsample_factor):
@@ -51,7 +51,7 @@ class Generator(nn.Module):
         self.n_residual_blocks = n_residual_blocks
         self.upsample_factor = upsample_factor
 
-        self.conv1 = nn.Conv2d(3, 64, 9, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(3, 64, 9, stride=1, padding=4)
 
         for i in range(self.n_residual_blocks):
             self.add_module('residual_block' + str(i+1), residualBlock())
@@ -59,14 +59,10 @@ class Generator(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
 
-        in_channels = 64
-        out_channels = 256
-        for i in range(self.upsample_factor):
-            self.add_module('upsample' + str(i+1), upsampleBlock(in_channels, out_channels))
-            in_channels = out_channels
-            out_channels = out_channels/2
+        for i in range(self.upsample_factor/2):
+            self.add_module('upsample' + str(i+1), upsampleBlock(64, 256))
 
-        self.conv3 = nn.Conv2d(in_channels, 3, 9, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(64, 3, 9, stride=1, padding=4)
 
     def forward(self, x):
         x = swish(self.conv1(x))
@@ -77,7 +73,7 @@ class Generator(nn.Module):
 
         x = self.bn2(self.conv2(y)) + x
 
-        for i in range(self.upsample_factor):
+        for i in range(self.upsample_factor/2):
             x = self.__getattr__('upsample' + str(i+1))(x)
 
         return self.conv3(x)
@@ -102,8 +98,8 @@ class Discriminator(nn.Module):
         self.conv8 = nn.Conv2d(512, 512, 3, stride=2, padding=1)
         self.bn8 = nn.BatchNorm2d(512)
 
-        self.fc1 = nn.Linear(2048, 1024)
-        self.fc2 = nn.Linear(1024, 1)
+        # Replaced original paper FC layers with FCN
+        self.conv9 = nn.Conv2d(512, 1, 1, stride=1, padding=1)
 
     def forward(self, x):
         x = swish(self.conv1(x))
@@ -116,8 +112,5 @@ class Discriminator(nn.Module):
         x = swish(self.bn7(self.conv7(x)))
         x = swish(self.bn8(self.conv8(x)))
 
-        # Flatten
-        x = x.view(x.size(0), -1)
-
-        x = swish(self.fc1(x))
-        return F.sigmoid(self.fc2(x))
+        x = self.conv9(x)
+        return F.sigmoid(F.avg_pool2d(x, x.size()[2:])).view(x.size()[0], -1)

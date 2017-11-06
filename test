@@ -106,6 +106,10 @@ mean_generator_adversarial_loss = 0.0
 mean_generator_total_loss = 0.0
 mean_discriminator_loss = 0.0
 
+# Set evaluation mode (not training)
+generator.eval()
+discriminator.eval()
+
 for i, data in enumerate(dataloader):
     # Generate data
     high_res_real, _ = data

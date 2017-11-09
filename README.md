@@ -65,6 +65,8 @@ Testing has been executed on 128 randomly selected ImageNet samples (disjoint fr
 ### Examples
 See more under the _output_ directory
 
+__High resolution / Low resolution / Recovered High Resolution__
+
 ![Original doggy](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_real/41.png)
 <img src="https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/low_res/41.png" alt="Low res doggy" width="96" height="96">
 ![Generated doggy](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_fake/41.png)

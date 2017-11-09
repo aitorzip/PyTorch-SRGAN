@@ -150,9 +150,10 @@ for i, data in enumerate(dataloader):
     sys.stdout.write('\r[%d/%d] Discriminator_Loss: %.4f Generator_Loss (Content/Advers/Total): %.4f/%.4f/%.4f' % (i, len(dataloader),
     discriminator_loss.data[0], generator_content_loss.data[0], generator_adversarial_loss.data[0], generator_total_loss.data[0]))
 
-    save_image(unnormalize(high_res_real.data[0]), 'output/high_res_real/' + str(i) + '.png')
-    save_image(unnormalize(high_res_fake.data[0]), 'output/high_res_fake/' + str(i) + '.png')
-    save_image(unnormalize(low_res[0]), 'output/low_res/' + str(i) + '.png')
+    for j in range(opt.batchSize):
+        save_image(unnormalize(high_res_real.data[j]), 'output/high_res_real/' + str(i*opt.batchSize + j) + '.png')
+        save_image(unnormalize(high_res_fake.data[j]), 'output/high_res_fake/' + str(i*opt.batchSize + j) + '.png')
+        save_image(unnormalize(low_res[j]), 'output/low_res/' + str(i*opt.batchSize + j) + '.png')
 
 sys.stdout.write('\r[%d/%d] Discriminator_Loss: %.4f Generator_Loss (Content/Advers/Total): %.4f/%.4f/%.4f\n' % (i, len(dataloader),
 mean_discriminator_loss/len(dataloader), mean_generator_content_loss/len(dataloader), 

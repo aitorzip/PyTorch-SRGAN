@@ -1,4 +1,4 @@
-# PyTorchSRGAN
+# PyTorch-SRGAN
 A modern PyTorch implementation of SRGAN
 
 It is deeply based on __Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network__ paper published by the Twitter team (https://arxiv.org/abs/1609.04802) but I replaced activations by Swish (https://arxiv.org/abs/1710.05941)

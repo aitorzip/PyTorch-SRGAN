@@ -55,7 +55,7 @@ The following results have been obtained with the current training setup:
 
 Other training parameters are the default of _train_ script
 
-(Training graphs here)
+![Tensorboard training graphs](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/training_results.png)
 
 ### Testing
 Testing has been executed on 128 randomly selected ImageNet samples (disjoint from training set)

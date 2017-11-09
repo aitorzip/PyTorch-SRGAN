@@ -27,7 +27,7 @@ usage: train [-h] [--dataset DATASET] [--dataroot DATAROOT]
 
 Example: ```./train --cuda```
 
-This will start a training session in the GPU. First it will pre-train the generator using MSE error for 300 epochs, then it will train the full GAN (generator + discriminator) for 100 epochs, using content (mse + vgg) and adversarial loss. Although weights are already provided in the repository, this script will also generate them in the checkpoints file.
+This will start a training session in the GPU. First it will pre-train the generator using MSE error for 2 epochs, then it will train the full GAN (generator + discriminator) for 100 epochs, using content (mse + vgg) and adversarial loss. Although weights are already provided in the repository, this script will also generate them in the checkpoints file.
 
 ## Testing
 
@@ -42,7 +42,7 @@ usage: test [-h] [--dataset DATASET] [--dataroot DATAROOT] [--workers WORKERS]
 
 Example: ```./test --cuda```
 
-This will start a testing session in the GPU. It will display mean error values and save the first image of each batch in the output directory, all three versions: low resolution, high resolution (original) and high resolution (generated).
+This will start a testing session in the GPU. It will display mean error values and save the generated images in the output directory, all three versions: low resolution, high resolution (original) and high resolution (generated).
 
 ## Results
 

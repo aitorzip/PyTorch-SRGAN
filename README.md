@@ -7,6 +7,12 @@ Experiments are being done with the CIFAR-100 dataset, due to computational limi
 
 Contributions are welcome!
 
+## Requirements
+
+* PyTorch
+* torchvision
+* tensorboard_logger (https://github.com/TeamHG-Memex/tensorboard_logger)
+
 ## Training
 
 ```
@@ -38,8 +44,23 @@ Example: ```./test --cuda```
 
 This will start a testing session in the GPU. It will display mean error values and save the first image of each batch in the output directory, all three versions: low resolution, high resolution (original) and high resolution (generated).
 
-## Requirements
+## Results
 
-* PyTorch
-* torchvision
-* tensorboard_logger (https://github.com/TeamHG-Memex/tensorboard_logger)
+### Training
+The following results have been obtained with the current training setup:
+
+* Dataset: 350K randomly selected ImageNet samples
+* Input image size: 24x24
+* Output image size: 96x96 (16x)
+
+Other training parameters are the default of _train_ script
+
+(Training graphs here)
+
+### Testing
+Testing has been executed on 128 randomly selected ImageNet samples (disjoint from training set)
+
+```[7/8] Discriminator_Loss: 1.4123 Generator_Loss (Content/Advers/Total): 0.0901/0.6152/0.0908```
+
+### Examples
+(Generated images here)

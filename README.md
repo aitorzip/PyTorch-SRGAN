@@ -63,4 +63,20 @@ Testing has been executed on 128 randomly selected ImageNet samples (disjoint fr
 ```[7/8] Discriminator_Loss: 1.4123 Generator_Loss (Content/Advers/Total): 0.0901/0.6152/0.0908```
 
 ### Examples
-(Generated images here)
+See more under the _output_ directory
+
+![Original doggy](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_real/41.png)
+<img src="https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/low_res/41.png" alt="Low res doggy" width="96" height="96">
+![Generated doggy](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_fake/41.png)
+
+![Original woman](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_real/38.png)
+<img src="https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/low_res/38.png" alt="Low res woman" width="96" height="96">
+![Generated woman](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_fake/38.png)
+
+![Original hair](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_real/127.png)
+<img src="https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/low_res/127.png" alt="Low res hair" width="96" height="96">
+![Generated hair](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_fake/127.png)
+
+![Original sand](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_real/72.png)
+<img src="https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/low_res/72.png" alt="Low res sand" width="96" height="96">
+![Generated sand](https://raw.githubusercontent.com/ai-tor/PyTorchSRGAN/master/output/high_res_fake/72.png)

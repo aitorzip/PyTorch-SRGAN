@@ -3,7 +3,7 @@ A modern PyTorch implementation of SRGAN
 
 It is deeply based on __Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network__ paper published by the Twitter team (https://arxiv.org/abs/1609.04802) but I replaced activations by Swish (https://arxiv.org/abs/1710.05941)
 
-Experiments are being done with the CIFAR-100 dataset, due to computational limitations, but I hope to use larger images later on.
+You can start training out-of-the-box with the CIFAR-10 or CIFAR-100 datasets, to emulate the paper results however, you will need to download and clean the ImageNet dataset yourself. Results and weights are provided for the ImageNet dataset. 
 
 Contributions are welcome!
 
